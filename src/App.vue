@@ -17,6 +17,10 @@
         Samples Per Bar
         <input type="number" v-model.number="samplesPerBar" />
       </label>
+      <label>
+        Row Spacing
+        <input type="number" v-model.number="rowSpacing" />
+      </label>
       <load-audio
         :num-bars="numBars"
         :samples-per-bar="samplesPerBar"
@@ -28,6 +32,7 @@
       :num-rows="numRows"
       :row-height="rowHeight"
       :bars-per-row="barsPerRow"
+      :row-spacing="rowSpacing"
     />
   </div>
 </template>
@@ -47,6 +52,7 @@ export default {
     numRows: 6,
     barsPerRow: 2000,
     samplesPerBar: 100,
+    rowSpacing: 0,
   }),
   computed: {
     numBars() {

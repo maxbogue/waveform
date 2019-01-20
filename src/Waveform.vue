@@ -3,11 +3,12 @@
     <svg
       ref="svg"
       width="100%"
+      height="0"
       preserveAspectRatio="none"
       xmlns="http://www.w3.org/2000/svg"
       shape-rendering="crispEdges"
     ></svg>
-    <button @click="downloadSvg">Download</button>
+    <button v-if="peaks" @click="downloadSvg">Download</button>
   </div>
 </template>
 
@@ -31,10 +32,13 @@ export default {
     numRows: { type: Number, required: true },
     rowHeight: { type: Number, required: true },
     barsPerRow: { type: Number, required: true },
+    rowSpacing: { type: Number, required: true },
   },
   computed: {
     totalHeight() {
-      return this.rowHeight * this.numRows;
+      return (
+        this.rowHeight * this.numRows + this.rowSpacing * (this.numRows - 1)
+      );
     },
     halfRowHeight() {
       return this.rowHeight / 2;
@@ -44,9 +48,7 @@ export default {
     peaks: 'render',
     numRows: 'render',
     rowHeight: 'render',
-  },
-  mounted() {
-    this.resizeSvg();
+    rowSpacing: 'render',
   },
   methods: {
     resizeSvg() {
@@ -60,7 +62,7 @@ export default {
       );
     },
     render: throttle(
-      200,
+      500,
       function() {
         /* eslint-disable no-invalid-this */
         removeAllChildNodes(this.$refs.svg);
@@ -69,7 +71,7 @@ export default {
         }
         this.resizeSvg();
         for (let i = 0; i < this.numRows; i++) {
-          const y = i * this.rowHeight + this.halfRowHeight;
+          const y = i * (this.rowHeight + this.rowSpacing) + this.halfRowHeight;
           for (let j = 0; j < this.barsPerRow; j++) {
             const k = 2 * (i * this.barsPerRow + j);
             this.renderBar(j, y, this.peaks[k], this.peaks[k + 1]);
