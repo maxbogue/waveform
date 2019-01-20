@@ -1,7 +1,28 @@
 <template>
-  <div id="app">
-    <div>
-      <input type="file" accept="audio/*" @change="onFileSelected" />
+  <div :class="$style.container">
+    <div :class="$style.controls">
+      <label>
+        Row Height
+        <input type="number" min="10" v-model.number="rowHeight" />
+      </label>
+      <label>
+        Number of Rows
+        <input type="number" min="1" v-model.number="numRows" />
+      </label>
+      <label>
+        Bars Per Row
+        <input type="number" min="1" v-model.number="barsPerRow" />
+      </label>
+      <label>
+        Samples Per Bar
+        <input type="number" v-model.number="samplesPerBar" />
+      </label>
+      <load-audio
+        :num-bars="numBars"
+        :samples-per-bar="samplesPerBar"
+        @update="updatePeaks"
+      />
+      <button @click="downloadSvg">Download</button>
     </div>
     <svg
       ref="svg"
@@ -14,17 +35,14 @@
 </template>
 
 <script>
+import throttle1 from 'lodash/fp/throttle';
+import { saveAs } from 'file-saver';
+
+import LoadAudio from './LoadAudio.vue';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// For an array of arrays of the same length, average the values at index
-// j of each array.
-function average(lsls, j) {
-  let n = 0;
-  for (let i = 0; i < lsls.length; i++) {
-    n += lsls[i][j];
-  }
-  return n / lsls.length;
-}
+const throttle = throttle1.convert({ fixed: false });
 
 function removeAllChildNodes(el) {
   while (el.firstChild) {
@@ -33,12 +51,14 @@ function removeAllChildNodes(el) {
 }
 
 export default {
+  components: {
+    LoadAudio,
+  },
   data: () => ({
-    audioContext: null,
-    audioBuffer: null,
+    peaks: null,
     rowHeight: 100,
     numRows: 6,
-    numBars: 10000,
+    barsPerRow: 2000,
     samplesPerBar: 100,
   }),
   computed: {
@@ -48,92 +68,49 @@ export default {
     halfRowHeight() {
       return this.rowHeight / 2;
     },
-    barsPerRow() {
-      return Math.floor(this.numBars / this.numRows);
+    numBars() {
+      return this.barsPerRow * this.numRows;
     },
-    peaks() {
-      if (!this.audioBuffer) {
-        return null;
-      }
-
-      const channels = new Array(this.audioBuffer.numberOfChannels);
-      for (let i = 0; i < this.audioBuffer.numberOfChannels; i++) {
-        channels[i] = this.audioBuffer.getChannelData(i);
-      }
-
-      const peaks = new Array(this.numBars * 2);
-      const sampleSize = this.audioBuffer.length / this.numBars;
-      const sampleStep = Math.floor(sampleSize / this.samplesPerBar) || 1;
-
-      for (let i = 0; i < this.numBars; i++) {
-        const start = Math.floor(i * sampleSize);
-        const end = start + sampleSize;
-
-        let min = 0;
-        let max = 0;
-
-        for (let j = start; j < end; j += sampleStep) {
-          const value = average(channels, j);
-          if (value > max) {
-            max = value;
-          }
-          if (value < min) {
-            min = value;
-          }
-        }
-
-        peaks[i * 2] = Math.max(-1, min);
-        peaks[i * 2 + 1] = Math.min(1, max);
-      }
-      return peaks;
-    },
+  },
+  watch: {
+    peaks: 'render',
+    numRows: 'render',
+    rowHeight: 'render',
   },
   mounted() {
     this.resizeSvg();
   },
   methods: {
     resizeSvg() {
-      this.$refs.svg.setAttribute('height', this.rowHeight * this.numRows);
+      this.$refs.svg.setAttribute('height', this.totalHeight);
       this.$refs.svg.setAttribute(
         'viewBox',
-        `0 0 ${this.barsPerRow} ${this.rowHeight * this.numRows}`
+        `0 0 ${this.barsPerRow} ${this.totalHeight}`
       );
     },
-    onFileSelected(e) {
-      this.loadFile(e.currentTarget.files[0]);
+    updatePeaks(peaks) {
+      this.peaks = peaks;
     },
-    loadFile(f) {
-      const reader = new FileReader();
-      reader.addEventListener('load', e => {
-        this.decodeAudioData(e.target.result);
-      });
-      reader.addEventListener('error', console.error);
-      reader.readAsArrayBuffer(f);
-    },
-    decodeAudioData(arrayBuffer) {
-      this.audioContext = new OfflineAudioContext(1, 2, 44100);
-      this.audioContext.decodeAudioData(
-        arrayBuffer,
-        audioBuffer => {
-          this.audioBuffer = audioBuffer;
-          this.render();
-        },
-        console.error
-      );
-    },
-    render() {
-      if (!this.peaks) {
-        return;
-      }
-      removeAllChildNodes(this.$refs.svg);
-      for (let i = 0; i < this.numRows; i++) {
-        const y = i * this.rowHeight + this.halfRowHeight;
-        for (let j = 0; j < this.barsPerRow; j++) {
-          const k = 2 * (i * this.barsPerRow + j);
-          this.renderBar(j, y, this.peaks[k], this.peaks[k + 1]);
+    render: throttle(
+      200,
+      function() {
+        /* eslint-disable no-invalid-this */
+        removeAllChildNodes(this.$refs.svg);
+        if (!this.peaks) {
+          return;
         }
-      }
-    },
+        this.resizeSvg();
+        for (let i = 0; i < this.numRows; i++) {
+          const y = i * this.rowHeight + this.halfRowHeight;
+          for (let j = 0; j < this.barsPerRow; j++) {
+            const k = 2 * (i * this.barsPerRow + j);
+            this.renderBar(j, y, this.peaks[k], this.peaks[k + 1]);
+          }
+        }
+        /* eslint-enable no-invalid-this */
+      },
+      { leading: false }
+    ),
     renderBar(x, y, min, max) {
       const line = document.createElementNS(SVG_NS, 'line');
       const maxY = y - max * this.halfRowHeight;
@@ -145,6 +122,29 @@ export default {
       line.setAttributeNS(null, 'stroke', 'black');
       this.$refs.svg.appendChild(line);
     },
+    downloadSvg() {
+      saveAs(
+        new Blob([this.$refs.svg.outerHTML], {
+          type: 'application/svg+xml',
+        }),
+        'waveform-' + Date.now() + '.svg'
+      );
+    },
   },
 };
 </script>
+
+<style lang="scss" module>
+.container {
+  margin: 20px auto;
+  width: 600px;
+}
+.controls {
+  label {
+    display: block;
+  }
+  input[type='number'] {
+    width: 50px;
+  }
+}
+</style>
