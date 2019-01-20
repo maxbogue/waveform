@@ -6,16 +6,76 @@
 </head>
 <body>
   <div id="app">
-    <input type="file" accept="audio/*" @change="onFileSelected">
-    <svg ref="svg" width="600" height="600"></svg>
+    <div>
+      <input type="file" accept="audio/*" @change="onFileSelected">
+    </div>
+    <div>
+      <svg ref="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
   </div>
 
   <script>
+    const NUM_CHANNELS = 2;
+    const SVG_NS = "http://www.w3.org/2000/svg";
+
     const app = new Vue({
       el: '#app',
       data: {
         audioContext: null,
         audioBuffer: null,
+        rowHeight: 150,
+        rowCount: 1,
+        rowWidth: 1000,
+        samplesPerPeak: 1000,
+      },
+      mounted() {
+      },
+      computed: {
+        totalHeight() {
+          return this.rowHeight * this.rowCount;
+        },
+        numPeaks() {
+          return this.rowWidth * this.rowCount;
+        },
+        peaks() {
+          if (!this.audioBuffer) {
+            return null;
+          }
+
+          const peaks = new Array(this.numPeaks * 2);
+          const peakSize = this.audioBuffer.length / this.numPeaks;
+          //const step = Math.floor(peakSize / this.samplesPerPeak) || 1;
+          const step = 100;
+          for (let c = 0; c < this.audioBuffer.numberOfChannels; c++) {
+            //const peaks = this.splitPeaks[c];
+            const chan = this.audioBuffer.getChannelData(c);
+            for (let i = 0; i < this.numPeaks; i++) {
+              const start = Math.floor(i * peakSize);
+              const end = start + peakSize;
+
+              let min = 0;
+              let max = 0;
+
+              for (let j = start; j < end; j += step) {
+                const value = chan[j];
+                if (value > max) {
+                  max = value;
+                }
+                if (value < min) {
+                  min = value;
+                }
+              }
+
+              peaks[i * 2] = Math.max(-1, min);
+              peaks[i * 2 + 1] = Math.min(1, max);
+            }
+          }
+          return peaks;
+        },
+      },
+      mounted() {
+        this.$refs.svg.setAttribute('width', this.rowWidth);
+        this.$refs.svg.setAttribute('height', this.rowHeight * this.rowCount);
       },
       methods: {
         onFileSelected(e) {
@@ -36,9 +96,30 @@
             arrayBuffer,
             audioBuffer => {
               this.audioBuffer = audioBuffer;
+              this.render();
             },
             console.error
           );
+        },
+        render() {
+          if (!this.peaks) {
+            return;
+          }
+          for (let i = 0; i < this.numPeaks; i++) {
+            this.renderBar(i, this.peaks[2 * i], this.peaks[2 * i + 1]);
+          }
+        },
+        renderBar(x, min, max) {
+          const rect = document.createElementNS(SVG_NS, "rect");
+          const halfHeight = this.rowHeight / 2;
+          const maxY = halfHeight - max * halfHeight;
+          const minY = halfHeight - min * halfHeight;
+          rect.setAttributeNS(null, "x", x);
+          rect.setAttributeNS(null, "y", maxY);
+          rect.setAttributeNS(null, "width", 1);
+          rect.setAttributeNS(null, "height", minY - maxY);
+          rect.setAttributeNS(null, "fill", "green");
+          this.$refs.svg.appendChild(rect);
         },
       }
     })
