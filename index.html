@@ -15,8 +15,17 @@
   </div>
 
   <script>
-    const NUM_CHANNELS = 2;
     const SVG_NS = "http://www.w3.org/2000/svg";
+
+    // For an array of arrays of the same length, average the values at index
+    // j of each array.
+    function average(lsls, j) {
+      let n = 0;
+      for (let i = 0; i < lsls.length; i++) {
+        n += lsls[i][j];
+      }
+      return n / lsls.length;
+    }
 
     const app = new Vue({
       el: '#app',
@@ -43,33 +52,34 @@
             return null;
           }
 
+          const channels = new Array(this.audioBuffer.numberOfChannels);
+          for (let i = 0; i < this.audioBuffer.numberOfChannels; i++) {
+            channels[i] = this.audioBuffer.getChannelData(i);
+          }
+
           const peaks = new Array(this.numBars * 2);
           const sampleSize = this.audioBuffer.length / this.numBars;
           const sampleStep = Math.floor(sampleSize / this.samplesPerBar) || 1;
 
-          for (let c = 0; c < this.audioBuffer.numberOfChannels; c++) {
-            //const peaks = this.splitPeaks[c];
-            const chan = this.audioBuffer.getChannelData(c);
-            for (let i = 0; i < this.numBars; i++) {
-              const start = Math.floor(i * sampleSize);
-              const end = start + sampleSize;
+          for (let i = 0; i < this.numBars; i++) {
+            const start = Math.floor(i * sampleSize);
+            const end = start + sampleSize;
 
-              let min = 0;
-              let max = 0;
+            let min = 0;
+            let max = 0;
 
-              for (let j = start; j < end; j += sampleStep) {
-                const value = chan[j];
-                if (value > max) {
-                  max = value;
-                }
-                if (value < min) {
-                  min = value;
-                }
+            for (let j = start; j < end; j += sampleStep) {
+              const value = average(channels, j);
+              if (value > max) {
+                max = value;
               }
-
-              peaks[i * 2] = Math.max(-1, min);
-              peaks[i * 2 + 1] = Math.min(1, max);
+              if (value < min) {
+                min = value;
+              }
             }
+
+            peaks[i * 2] = Math.max(-1, min);
+            peaks[i * 2 + 1] = Math.min(1, max);
           }
           return peaks;
         },
