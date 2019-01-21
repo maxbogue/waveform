@@ -11,6 +11,9 @@ const sassLoader = {
 };
 
 module.exports = {
+  output: {
+    path: path.resolve(__dirname, 'dist/js'),
+  },
   module: {
     rules: [
       {
