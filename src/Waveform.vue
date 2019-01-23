@@ -1,15 +1,18 @@
 <template>
-  <div>
-    <svg
-      ref="svg"
-      width="100%"
-      height="0"
-      preserveAspectRatio="none"
-      xmlns="http://www.w3.org/2000/svg"
-      shape-rendering="crispEdges"
-    ></svg>
-    <button v-if="peaks" @click="downloadSvg">Download</button>
-  </div>
+  <md-card md-with-hover>
+    <md-ripple>
+      <svg
+        v-show="peaks"
+        ref="svg"
+        width="100%"
+        height="0"
+        preserveAspectRatio="none"
+        xmlns="http://www.w3.org/2000/svg"
+        shape-rendering="crispEdges"
+        @click="downloadSvg"
+      ></svg>
+    </md-ripple>
+  </md-card>
 </template>
 
 <script>
@@ -46,9 +49,6 @@ export default {
   },
   watch: {
     peaks: 'render',
-    numRows: 'render',
-    rowHeight: 'render',
-    rowSpacing: 'render',
   },
   methods: {
     resizeSvg() {
@@ -103,18 +103,3 @@ export default {
   },
 };
 </script>
-
-<style lang="scss" module>
-.container {
-  margin: 20px auto;
-  width: 600px;
-}
-.controls {
-  label {
-    display: block;
-  }
-  input[type='number'] {
-    width: 50px;
-  }
-}
-</style>

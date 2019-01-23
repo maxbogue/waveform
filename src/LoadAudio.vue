@@ -1,5 +1,8 @@
 <template>
-  <input type="file" accept="audio/*" @change="onFileSelected" />
+  <md-field>
+    <label>Upload Audio File</label>
+    <md-file accept="audio/*" placeholder="song.mp3" @md-change="loadFile" />
+  </md-field>
 </template>
 
 <script>
@@ -66,16 +69,17 @@ export default {
     },
   },
   methods: {
-    onFileSelected(e) {
-      this.loadFile(e.currentTarget.files[0]);
-    },
-    loadFile(f) {
+    loadFile(files) {
+      if (files.length === 0) {
+        this.peaks = null;
+        return;
+      }
       const reader = new FileReader();
       reader.addEventListener('load', e => {
         this.decodeAudioData(e.target.result);
       });
       reader.addEventListener('error', console.error);
-      reader.readAsArrayBuffer(f);
+      reader.readAsArrayBuffer(files[0]);
     },
     decodeAudioData(arrayBuffer) {
       this.audioContext = new OfflineAudioContext(1, 2, 44100);
