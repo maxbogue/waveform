@@ -1,5 +1,5 @@
 <template>
-  <div :class="$style.container">
+  <form :class="$style.container" @submit.prevent="render">
     <div :class="$style.controls">
       <md-field>
         <label>Row Height</label>
@@ -28,18 +28,19 @@
         :samples-per-bar="samplesPerBar"
         @update="updatePeaks"
       />
-      <md-button class="md-raised md-primary" :disabled="!peaks" @click="render"
+      <md-button type="submit" class="md-raised md-primary" :disabled="!peaks"
         >Render</md-button
       >
     </div>
     <waveform
-      :peaks="renderPeaks"
+      :peaks="peaks"
       :num-rows="numRows"
       :row-height="rowHeight"
       :bars-per-row="barsPerRow"
       :row-spacing="rowSpacing"
+      :render-signal="renderSignal"
     />
-  </div>
+  </form>
 </template>
 
 <script>
@@ -53,12 +54,12 @@ export default {
   },
   data: () => ({
     peaks: null,
-    renderPeaks: null,
     rowHeight: 100,
     numRows: 6,
-    barsPerRow: 2000,
-    samplesPerBar: 100,
-    rowSpacing: 0,
+    barsPerRow: 4000,
+    samplesPerBar: 250,
+    rowSpacing: 55,
+    renderSignal: false,
   }),
   computed: {
     numBars() {
@@ -70,7 +71,7 @@ export default {
       this.peaks = peaks;
     },
     render() {
-      this.renderPeaks = this.peaks;
+      this.renderSignal = !this.renderSignal;
     },
   },
 };

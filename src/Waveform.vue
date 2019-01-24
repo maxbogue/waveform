@@ -16,12 +16,9 @@
 </template>
 
 <script>
-import throttle1 from 'lodash/fp/throttle';
 import { saveAs } from 'file-saver';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-
-const throttle = throttle1.convert({ fixed: false });
 
 function removeAllChildNodes(el) {
   while (el.firstChild) {
@@ -36,6 +33,7 @@ export default {
     rowHeight: { type: Number, required: true },
     barsPerRow: { type: Number, required: true },
     rowSpacing: { type: Number, required: true },
+    renderSignal: { type: Boolean, required: true },
   },
   computed: {
     totalHeight() {
@@ -48,7 +46,7 @@ export default {
     },
   },
   watch: {
-    peaks: 'render',
+    renderSignal: 'render',
   },
   methods: {
     resizeSvg() {
@@ -61,15 +59,15 @@ export default {
         `0 0 ${this.barsPerRow} ${this.totalHeight}`
       );
     },
-    render: throttle(
-      500,
-      function() {
-        /* eslint-disable no-invalid-this */
-        removeAllChildNodes(this.$refs.svg);
-        if (!this.peaks) {
-          return;
-        }
-        this.resizeSvg();
+    render() {
+      const svg = this.$refs.svg;
+      removeAllChildNodes(svg);
+      if (!this.peaks) {
+        return;
+      }
+      const parent = svg.parentNode;
+      parent.removeChild(svg);
+      setTimeout(() => {
         for (let i = 0; i < this.numRows; i++) {
           const y = i * (this.rowHeight + this.rowSpacing) + this.halfRowHeight;
           for (let j = 0; j < this.barsPerRow; j++) {
@@ -77,10 +75,10 @@ export default {
             this.renderBar(j, y, this.peaks[k], this.peaks[k + 1]);
           }
         }
-        /* eslint-enable no-invalid-this */
-      },
-      { leading: false }
-    ),
+        parent.appendChild(svg);
+        this.resizeSvg();
+      });
+    },
     renderBar(x, y, min, max) {
       const line = document.createElementNS(SVG_NS, 'line');
       const maxY = y - max * this.halfRowHeight;
