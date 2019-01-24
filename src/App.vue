@@ -27,11 +27,18 @@
         :num-bars="numBars"
         :samples-per-bar="samplesPerBar"
         @update="updatePeaks"
+        @progress="updatePeaksProgress"
       />
       <md-button type="submit" class="md-raised md-primary" :disabled="!peaks"
         >Render</md-button
       >
     </div>
+    <md-progress-bar
+      v-if="peaksProgress >= 0"
+      md-mode="buffer"
+      :md-value="renderProgress"
+      :md-buffer="peaksProgress"
+    />
     <waveform
       :peaks="peaks"
       :num-rows="numRows"
@@ -39,6 +46,7 @@
       :bars-per-row="barsPerRow"
       :row-spacing="rowSpacing"
       :render-signal="renderSignal"
+      @progress="updateRenderProgress"
     />
   </form>
 </template>
@@ -60,6 +68,8 @@ export default {
     samplesPerBar: 250,
     rowSpacing: 55,
     renderSignal: false,
+    renderProgress: 0,
+    peaksProgress: -1,
   }),
   computed: {
     numBars() {
@@ -69,6 +79,12 @@ export default {
   methods: {
     updatePeaks(peaks) {
       this.peaks = peaks;
+    },
+    updatePeaksProgress(peaksProgress) {
+      this.peaksProgress = peaksProgress;
+    },
+    updateRenderProgress(renderProgress) {
+      this.renderProgress = renderProgress;
     },
     render() {
       this.renderSignal = !this.renderSignal;

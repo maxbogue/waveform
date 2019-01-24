@@ -1,5 +1,5 @@
 <template>
-  <md-card md-with-hover>
+  <md-card md-with-hover :class="$style.card">
     <md-ripple>
       <svg
         v-show="peaks"
@@ -17,6 +17,8 @@
 
 <script>
 import { saveAs } from 'file-saver';
+
+import { asyncFor } from './utils';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -44,6 +46,9 @@ export default {
     halfRowHeight() {
       return this.rowHeight / 2;
     },
+    numBars() {
+      return this.barsPerRow * this.numRows;
+    },
   },
   watch: {
     renderSignal: 'render',
@@ -62,24 +67,41 @@ export default {
     render() {
       const svg = this.$refs.svg;
       removeAllChildNodes(svg);
+      this.resizeSvg();
       if (!this.peaks) {
         return;
       }
-      const parent = svg.parentNode;
-      parent.removeChild(svg);
-      setTimeout(() => {
-        for (let i = 0; i < this.numRows; i++) {
-          const y = i * (this.rowHeight + this.rowSpacing) + this.halfRowHeight;
-          for (let j = 0; j < this.barsPerRow; j++) {
-            const k = 2 * (i * this.barsPerRow + j);
-            this.renderBar(j, y, this.peaks[k], this.peaks[k + 1]);
+
+      let frag = null;
+      const progressStep = Math.floor(this.numBars / 20) || 1;
+      asyncFor(
+        this.numBars,
+        i => {
+          if (i % progressStep === 0) {
+            this.$emit('progress', (i * 100) / this.numBars);
           }
+          const row = Math.floor(i / this.barsPerRow);
+          const y =
+            row * (this.rowHeight + this.rowSpacing) + this.halfRowHeight;
+          const x = i % this.barsPerRow;
+          if (x === 0) {
+            if (frag) {
+              this.$refs.svg.appendChild(frag);
+            }
+            frag = document.createDocumentFragment();
+          }
+
+          const k = 2 * (row * this.barsPerRow + x);
+          const line = this.renderLine(x, y, this.peaks[k], this.peaks[k + 1]);
+          frag.appendChild(line);
+        },
+        () => {
+          this.$emit('progress', 100);
+          this.$refs.svg.appendChild(frag);
         }
-        parent.appendChild(svg);
-        this.resizeSvg();
-      });
+      );
     },
-    renderBar(x, y, min, max) {
+    renderLine(x, y, min, max) {
       const line = document.createElementNS(SVG_NS, 'line');
       const maxY = y - max * this.halfRowHeight;
       const minY = y - min * this.halfRowHeight;
@@ -88,7 +110,7 @@ export default {
       line.setAttributeNS(null, 'y1', maxY);
       line.setAttributeNS(null, 'y2', minY);
       line.setAttributeNS(null, 'stroke', 'black');
-      this.$refs.svg.appendChild(line);
+      return line;
     },
     downloadSvg() {
       saveAs(
@@ -101,3 +123,9 @@ export default {
   },
 };
 </script>
+
+<style lang="scss" module>
+.card {
+  margin: 15px 0;
+}
+</style>
