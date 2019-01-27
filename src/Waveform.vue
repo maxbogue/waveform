@@ -1,16 +1,12 @@
 <template>
   <md-card md-with-hover :class="$style.card">
     <md-ripple>
-      <svg
-        v-show="peaks"
-        ref="svg"
-        width="100%"
-        height="0"
-        preserveAspectRatio="none"
-        xmlns="http://www.w3.org/2000/svg"
-        shape-rendering="crispEdges"
-        @click="downloadSvg"
-      ></svg>
+      <canvas
+        v-show="showCanvas"
+        ref="canvas"
+        style="width: 100%"
+        @click="download"
+      ></canvas>
     </md-ripple>
   </md-card>
 </template>
@@ -22,12 +18,6 @@ import { asyncFor } from './utils';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-function removeAllChildNodes(el) {
-  while (el.firstChild) {
-    el.removeChild(el.firstChild);
-  }
-}
-
 export default {
   props: {
     peaks: { type: Array, default: null },
@@ -37,6 +27,11 @@ export default {
     rowSpacing: { type: Number, required: true },
     renderSignal: { type: Boolean, required: true },
   },
+  data: () => ({
+    svg: null,
+    showCanvas: false,
+    canDownload: false,
+  }),
   computed: {
     totalHeight() {
       return (
@@ -54,25 +49,29 @@ export default {
     renderSignal: 'render',
   },
   methods: {
-    resizeSvg() {
-      if (!this.totalHeight) {
-        return;
-      }
-      this.$refs.svg.setAttribute('height', this.totalHeight);
-      this.$refs.svg.setAttribute(
+    render() {
+      this.svg = document.createElementNS(SVG_NS, 'svg');
+      this.svg.setAttribute('xmlns', SVG_NS);
+      this.svg.setAttribute('width', '100%');
+      this.svg.setAttribute('height', this.totalHeight);
+      this.svg.setAttribute(
         'viewBox',
         `0 0 ${this.barsPerRow} ${this.totalHeight}`
       );
-    },
-    render() {
-      const svg = this.$refs.svg;
-      removeAllChildNodes(svg);
-      this.resizeSvg();
+      this.svg.setAttribute('preserveAspectRatio', 'none');
+      this.svg.setAttribute('shape-rendering', 'crispEdges');
+
+      this.$refs.canvas.style.height = `${this.totalHeight}px`;
+      this.$refs.canvas.setAttribute('height', this.totalHeight);
+      this.$refs.canvas.setAttribute('width', this.barsPerRow);
+
+      this.canDownload = false;
       if (!this.peaks) {
+        this.showCanvas = false;
         return;
       }
+      this.showCanvas = true;
 
-      let frag = null;
       const progressStep = Math.floor(this.numBars / 20) || 1;
       asyncFor(
         this.numBars,
@@ -84,37 +83,40 @@ export default {
           const y =
             row * (this.rowHeight + this.rowSpacing) + this.halfRowHeight;
           const x = i % this.barsPerRow;
-          if (x === 0) {
-            if (frag) {
-              this.$refs.svg.appendChild(frag);
-            }
-            frag = document.createDocumentFragment();
-          }
-
           const k = 2 * (row * this.barsPerRow + x);
-          const line = this.renderLine(x, y, this.peaks[k], this.peaks[k + 1]);
-          frag.appendChild(line);
+          this.renderLine(x, y, this.peaks[k], this.peaks[k + 1]);
         },
         () => {
           this.$emit('progress', 100);
-          this.$refs.svg.appendChild(frag);
+          this.canDownload = true;
         }
       );
     },
     renderLine(x, y, min, max) {
+      const y1 = y - max * this.halfRowHeight;
+      const y2 = y - min * this.halfRowHeight;
+
+      const ctx = this.$refs.canvas.getContext('2d');
+      ctx.strokeStyle = '#000000';
+      ctx.beginPath();
+      ctx.moveTo(x, y1);
+      ctx.lineTo(x, y2);
+      ctx.stroke();
+
       const line = document.createElementNS(SVG_NS, 'line');
-      const maxY = y - max * this.halfRowHeight;
-      const minY = y - min * this.halfRowHeight;
       line.setAttributeNS(null, 'x1', x);
       line.setAttributeNS(null, 'x2', x);
-      line.setAttributeNS(null, 'y1', maxY);
-      line.setAttributeNS(null, 'y2', minY);
+      line.setAttributeNS(null, 'y1', y1);
+      line.setAttributeNS(null, 'y2', y2);
       line.setAttributeNS(null, 'stroke', 'black');
-      return line;
+      this.svg.appendChild(line);
     },
-    downloadSvg() {
+    download() {
+      if (!this.canDownload) {
+        return;
+      }
       saveAs(
-        new Blob([this.$refs.svg.outerHTML], {
+        new Blob([this.svg.outerHTML], {
           type: 'application/svg+xml',
         }),
         'waveform-' + Date.now() + '.svg'

@@ -1,4 +1,4 @@
-const MAX_TIME_PER_CHUNK = 100;
+const MAX_TIME_PER_CHUNK = 50;
 
 export function asyncFor(n, fn, end) {
   let i = 0;
@@ -8,7 +8,7 @@ export function asyncFor(n, fn, end) {
       fn(i);
     }
     if (i < n) {
-      setTimeout(doChunk, 10);
+      setTimeout(doChunk, 1);
     } else {
       end();
     }
