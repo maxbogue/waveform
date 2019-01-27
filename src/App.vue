@@ -22,32 +22,34 @@
         <md-input type="number" v-model.number="rowSpacing" />
       </md-field>
     </div>
-    <div :class="$style.row">
-      <load-audio
-        :num-bars="numBars"
-        :samples-per-bar="samplesPerBar"
-        @update="updatePeaks"
-        @progress="updatePeaksProgress"
+    <div :class="$style.display">
+      <div :class="$style.row">
+        <load-audio
+          :num-bars="numBars"
+          :samples-per-bar="samplesPerBar"
+          @update="updatePeaks"
+          @progress="updatePeaksProgress"
+        />
+        <md-button type="submit" class="md-raised md-primary" :disabled="!peaks"
+          >Render</md-button
+        >
+      </div>
+      <md-progress-bar
+        v-if="peaksProgress >= 0"
+        md-mode="buffer"
+        :md-value="renderProgress"
+        :md-buffer="peaksProgress"
       />
-      <md-button type="submit" class="md-raised md-primary" :disabled="!peaks"
-        >Render</md-button
-      >
+      <waveform
+        :peaks="peaks"
+        :num-rows="numRows"
+        :row-height="rowHeight"
+        :bars-per-row="barsPerRow"
+        :row-spacing="rowSpacing"
+        :render-signal="renderSignal"
+        @progress="updateRenderProgress"
+      />
     </div>
-    <md-progress-bar
-      v-if="peaksProgress >= 0"
-      md-mode="buffer"
-      :md-value="renderProgress"
-      :md-buffer="peaksProgress"
-    />
-    <waveform
-      :peaks="peaks"
-      :num-rows="numRows"
-      :row-height="rowHeight"
-      :bars-per-row="barsPerRow"
-      :row-spacing="rowSpacing"
-      :render-signal="renderSignal"
-      @progress="updateRenderProgress"
-    />
   </form>
 </template>
 
@@ -96,17 +98,18 @@ export default {
 <style lang="scss" module>
 .container {
   margin: 20px auto;
-  width: 600px;
-}
-
-.controls {
+  width: 820px;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
+}
 
-  > * {
-    width: 48%;
-  }
+.controls {
+  width: 200px;
+}
+
+.display {
+  width: 600px;
 }
 
 .row {
@@ -114,11 +117,11 @@ export default {
   align-items: center;
 
   > :first-child {
-    margin: 15px 15px 15px 0;
+    margin: 0 20px 20px 0;
   }
 
   > :last-child {
-    margin: 15px 0 15px 15px;
+    margin: 0 0 20px 20px;
   }
 }
 </style>
