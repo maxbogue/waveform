@@ -41,6 +41,7 @@
         :md-buffer="peaksProgress"
       />
       <waveform
+        :can-download-svg="true"
         :peaks="peaks"
         :num-rows="numRows"
         :row-height="rowHeight"
@@ -84,6 +85,7 @@ export default {
     },
     updatePeaksProgress(peaksProgress) {
       this.peaksProgress = peaksProgress;
+      this.renderProgress = 0;
     },
     updateRenderProgress(renderProgress) {
       this.renderProgress = renderProgress;

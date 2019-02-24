@@ -11,6 +11,10 @@ const sassLoader = {
 };
 
 module.exports = {
+  entry: {
+    app: './src/app.js',
+    preview: './src/preview.js',
+  },
   output: {
     path: path.resolve(__dirname, 'dist/js'),
   },

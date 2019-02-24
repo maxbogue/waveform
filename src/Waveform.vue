@@ -1,6 +1,6 @@
 <template>
-  <md-card md-with-hover :class="$style.card">
-    <md-ripple>
+  <md-card :md-with-hover="canDownloadSvg" :class="$style.card">
+    <md-ripple v-if="canDownloadSvg">
       <canvas
         v-show="showCanvas"
         ref="canvas"
@@ -8,6 +8,12 @@
         @click="download"
       ></canvas>
     </md-ripple>
+    <canvas
+      v-else
+      v-show="showCanvas"
+      ref="canvas"
+      style="width: 100%"
+    ></canvas>
   </md-card>
 </template>
 
@@ -20,6 +26,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export default {
   props: {
+    canDownloadSvg: { type: Boolean, default: false },
     peaks: { type: Array, default: null },
     numRows: { type: Number, required: true },
     rowHeight: { type: Number, required: true },
@@ -30,7 +37,7 @@ export default {
   data: () => ({
     svg: null,
     showCanvas: false,
-    canDownload: false,
+    downloadReady: false,
   }),
   computed: {
     totalHeight() {
@@ -50,22 +57,24 @@ export default {
   },
   methods: {
     render() {
-      this.svg = document.createElementNS(SVG_NS, 'svg');
-      this.svg.setAttribute('xmlns', SVG_NS);
-      this.svg.setAttribute('width', '100%');
-      this.svg.setAttribute('height', this.totalHeight);
-      this.svg.setAttribute(
-        'viewBox',
-        `0 0 ${this.barsPerRow} ${this.totalHeight}`
-      );
-      this.svg.setAttribute('preserveAspectRatio', 'none');
-      this.svg.setAttribute('shape-rendering', 'crispEdges');
+      if (this.canDownloadSvg) {
+        this.svg = document.createElementNS(SVG_NS, 'svg');
+        this.svg.setAttribute('xmlns', SVG_NS);
+        this.svg.setAttribute('width', '100%');
+        this.svg.setAttribute('height', this.totalHeight);
+        this.svg.setAttribute(
+          'viewBox',
+          `0 0 ${this.barsPerRow} ${this.totalHeight}`
+        );
+        this.svg.setAttribute('preserveAspectRatio', 'none');
+        this.svg.setAttribute('shape-rendering', 'crispEdges');
+      }
 
       this.$refs.canvas.style.height = `${this.totalHeight}px`;
       this.$refs.canvas.setAttribute('height', this.totalHeight);
       this.$refs.canvas.setAttribute('width', this.barsPerRow);
 
-      this.canDownload = false;
+      this.downloadReady = false;
       if (!this.peaks) {
         this.showCanvas = false;
         return;
@@ -88,7 +97,7 @@ export default {
         },
         () => {
           this.$emit('progress', 100);
-          this.canDownload = true;
+          this.downloadReady = true;
         }
       );
     },
@@ -103,6 +112,10 @@ export default {
       ctx.lineTo(x, y2);
       ctx.stroke();
 
+      if (!this.canDownloadSvg) {
+        return;
+      }
+
       const line = document.createElementNS(SVG_NS, 'line');
       line.setAttributeNS(null, 'x1', x);
       line.setAttributeNS(null, 'x2', x);
@@ -112,7 +125,7 @@ export default {
       this.svg.appendChild(line);
     },
     download() {
-      if (!this.canDownload) {
+      if (!this.canDownloadSvg || !this.downloadReady) {
         return;
       }
       saveAs(
