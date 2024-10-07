@@ -9,7 +9,7 @@
   </md-field>
 </template>
 
-<script>
+<script lang="ts">
 import { asyncFor } from './utils';
 
 // For an array of arrays of the same length, average the values at index

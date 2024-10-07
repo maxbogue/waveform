@@ -54,7 +54,7 @@
   </form>
 </template>
 
-<script>
+<script lang="ts">
 import LoadAudio from './LoadAudio.vue';
 import Waveform from './Waveform.vue';
 

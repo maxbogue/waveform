@@ -17,7 +17,7 @@
   </md-card>
 </template>
 
-<script>
+<script lang="ts">
 import { saveAs } from 'file-saver';
 
 import { asyncFor } from './utils';
